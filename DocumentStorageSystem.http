@@ -1,0 +1,6 @@
+@DocumentStorageSystem_HostAddress = http://localhost:5108
+
+GET {{DocumentStorageSystem_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
