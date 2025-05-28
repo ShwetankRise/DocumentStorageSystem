@@ -27,7 +27,6 @@
     <Folder Include="Controllers\" />
     <Folder Include="Tests\" />
     <Folder Include="Services\" />
-    <Folder Include="NewFolder\" />
   </ItemGroup>
 
 </Project>
