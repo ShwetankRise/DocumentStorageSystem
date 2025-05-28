@@ -140,11 +140,20 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     }
 });
 
-// Download specific file (latest or revision)
+// Download file (latest or specific revision)
 function downloadFile(fileName, revision = null) {
     let url = `/api/files/${encodeURIComponent(fileName)}`;
+    let downloadName = fileName;
+
     if (revision !== null && revision !== '') {
         url += `?revision=${revision}`;
+        // Append version to filename, e.g., review-v0.pdf
+        const extensionIndex = fileName.lastIndexOf('.');
+        if (extensionIndex !== -1) {
+            downloadName = `${fileName.substring(0, extensionIndex)}-v${revision}${fileName.substring(extensionIndex)}`;
+        } else {
+            downloadName = `${fileName}-v${revision}`;
+        }
     }
 
     fetch(url, {
@@ -155,24 +164,34 @@ function downloadFile(fileName, revision = null) {
     })
         .then(response => {
             if (!response.ok) {
-                throw new Error("Download failed");
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    token = null;
+                    showLogin();
+                    throw new Error('Unauthorized access');
+                }
+                return response.json().then(data => {
+                    throw new Error(data.message || 'Download failed');
+                });
             }
             return response.blob();
         })
         .then(blob => {
             const downloadLink = document.createElement('a');
             downloadLink.href = window.URL.createObjectURL(blob);
-            downloadLink.download = fileName;
+            downloadLink.download = downloadName;
             document.body.appendChild(downloadLink);
             downloadLink.click();
-            downloadLink.remove();
+            document.body.removeChild(downloadLink);
         })
         .catch(error => {
-            alert("Download failed: " + error.message);
+            const errorDiv = document.getElementById('file-error');
+            errorDiv.textContent = error.message;
+            errorDiv.style.display = 'block';
         });
 }
 
-//listFiles function
+// List files
 async function listFiles() {
     const fileList = document.getElementById('file-list');
     const errorDiv = document.getElementById('file-error');
@@ -189,11 +208,10 @@ async function listFiles() {
                     <td>${file.name}</td>
                     <td>${file.version}</td>
                     <td>${new Date(file.uploadDate).toLocaleString()}</td>
-                   <td>
-                    <button onclick="downloadFile('${file.name}')" class="btn btn-sm btn-primary">Download Latest</button>
- 
-                  </td>
-
+                    <td>
+                        <button onclick="downloadFile('${file.name}')" class="btn btn-sm btn-primary">Download Latest</button>
+                        <input type="number" min="0" max="${file.version}" placeholder="Revision" style="width: 80px; display: inline-block;" onchange="downloadFile('${file.name}', this.value)" />
+                    </td>
                 `;
                 fileList.appendChild(row);
             });
@@ -209,16 +227,6 @@ async function listFiles() {
     } catch (err) {
         errorDiv.textContent = 'Failed to fetch files';
         errorDiv.style.display = 'block';
-    }
-}
-
-
-// List files
-
-// Download specific revision
-function downloadRevision(fileName, revision) {
-    if (revision >= 0) {
-        window.open(`/api/files/${fileName}?revision=${revision}`, '_blank');
     }
 }
 
